@@ -79,4 +79,454 @@
       <p><button id="button" class="button">Toggle</button></p>
     </div>
   </div>
+  Random Nerd Tutorials
+ Menu
+ESP32 WebSocket Server: Control Outputs (Arduino IDE)
+In this tutorial you’ll learn how to build a web server with the ESP32 using WebSocket communication protocol. As an example, we’ll show you how to build a web page to control the ESP32 outputs remotely. The output state is displayed on the web page and it updates automatically in all clients.
+
+ESP32 WebSocket Server Control Outputs Arduino IDE
+The ESP32 will be programmed using Arduino IDE and the ESPAsyncWebServer. We also have a similar WebSocket guide for the ESP8266.
+
+If you’ve been following some of our previous web server projects like this one, you may have noticed that if you have several tabs (in the same or on different devices) opened at the same time, the state doesn’t update in all tabs automatically unless you refresh the web page. To solve this issue, we can use WebSocket protocol – all clients can be notified when a change occurs and update the web page accordingly.
+
+This tutorial was based on a project created and documented by one of our readers (Stéphane Calderoni). You can read his excellent tutorial here.
+
+Introducing WebSocket
+A WebSocket is a persistent connection between a client and a server that allows bidirectional communication between both parties using a TCP connection. This means you can send data from the client to the server and from the server to the client at any given time. 
+
+ESP32 ESP8266 WebSocket Server How it Works
+The client establishes a WebSocket connection with the server through a process known as WebSocket handshake. The handshake starts with an HTTP request/response, allowing servers to handle HTTP connections as well as WebSocket connections on the same port. Once the connection is established, the client and the server can send WebSocket data in full duplex mode.
+
+Using the WebSockets protocol, the server (ESP32 board) can send information to the client or to all clients without being requested. This also allows us to send information to the web browser when a change occurs.
+
+This change can be something that happened on the web page (you clicked a button) or something that happened on the ESP32 side like pressing a physical button on a circuit.
+
+Project Overview
+Here’s the web page we’ll build for this project.
+
+ESP32 WebSocket Server Toggle Outputs Project Overview
+The ESP32 web server displays a web page with a button to toggle the state of GPIO 2;
+For simplicity, we’re controlling GPIO 2 – the on-board LED. You can use this example to control any other GPIO;
+The interface shows the current GPIO state. Whenever a change occurs on the GPIO state, the interface is updated instantaneously;
+The GPIO state is updated automatically in all clients. This means that if you have several web browser tabs opened on the same device or on different devices, they are all updated at the same time.
+How it Works?
+The following image describes what happens when click on the “Toggle” button.
+
+ESP32 WebSocket Web Server Update All Clients How it Works
+Here’s what happens when you click on the “Toggle” button:
+
+Click on the “Toggle” button;
+The client (your browser) sends data via WebSocket protocol with the “toggle” message;
+The ESP32 (server) receives this message, so it knows it should toggle the LED state. If the LED was previously off, turn it on;
+Then, it sends data with the new LED state to all clients also through WebSocket protocol;
+The clients receive the message and update the led state on the web page accordingly. This allows us to update all clients almost instantaneously when a change happens.
+Preparing Arduino IDE
+We’ll program the ESP32 board using Arduino IDE, so make sure you have it installed in your Arduino IDE.
+
+Installing the ESP32 Board in Arduino IDE (Windows, Mac OS X, Linux)
+Installing Libraries – Async Web Server
+To build the web server we’ll use the ESPAsyncWebServer library. This library needs the AsyncTCP library to work properly. Click the links below to download the libraries.
+
+ESPAsyncWebServer 
+AsyncTCP
+These libraries aren’t available to install through the Arduino Library Manager, so you need to copy the library files to the Arduino Installation Libraries folder. Alternatively, in your Arduino IDE, you can go to Sketch > Include Library > Add .zip Library and select the libraries you’ve just downloaded.
+
+Code for ESP32 WebSocket Server
+Copy the following code to your Arduino IDE.
+
+/*********
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp32-websocket-server-arduino/
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+*********/
+
+// Import required libraries
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
+// Replace with your network credentials
+const char* ssid = "REPLACE_WITH_YOUR_SSID";
+const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+
+bool ledState = 0;
+const int ledPin = 2;
+
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html>
+<head>
+  <title>ESP Web Server</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <style>
+  html {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+  }
+  h1 {
+    font-size: 1.8rem;
+    color: white;
+  }
+  h2{
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #143642;
+  }
+  .topnav {
+    overflow: hidden;
+    background-color: #143642;
+  }
+  body {
+    margin: 0;
+  }
+  .content {
+    padding: 30px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .card {
+    background-color: #F8F7F9;;
+    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    padding-top:10px;
+    padding-bottom:20px;
+  }
+  .button {
+    padding: 15px 50px;
+    font-size: 24px;
+    text-align: center;
+    outline: none;
+    color: #fff;
+    background-color: #0f8b8d;
+    border: none;
+    border-radius: 5px;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+   }
+   /*.button:hover {background-color: #0f8b8d}*/
+   .button:active {
+     background-color: #0f8b8d;
+     box-shadow: 2 2px #CDCDCD;
+     transform: translateY(2px);
+   }
+   .state {
+     font-size: 1.5rem;
+     color:#8c8c8c;
+     font-weight: bold;
+   }
+  </style>
+<title>ESP Web Server</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+</head>
+<body>
+  <div class="topnav">
+    <h1>ESP WebSocket Server</h1>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Output - GPIO 2</h2>
+      <p class="state">state: <span id="state">%STATE%</span></p>
+      <p><button id="button" class="button">Toggle</button></p>
+    </div>
+  </div>
+<script>
+  var gateway = `ws://${window.location.hostname}/ws`;
+  var websocket;
+  window.addEventListener('load', onLoad);
+  function initWebSocket() {
+    console.log('Trying to open a WebSocket connection...');
+    websocket = new WebSocket(gateway);
+    websocket.onopen    = onOpen;
+    websocket.onclose   = onClose;
+    websocket.onmessage = onMessage; // <-- add this line
+  }
+  function onOpen(event) {
+    console.log('Connection opened');
+  }
+  function onClose(event) {
+    console.log('Connection closed');
+    setTimeout(initWebSocket, 2000);
+  }
+  function onMessage(event) {
+    var state;
+    if (event.data == "1"){
+      state = "ON";
+    }
+    else{
+      state = "OFF";
+    }
+    document.getElementById('state').innerHTML = state;
+  }
+  function onLoad(event) {
+    initWebSocket();
+    initButton();
+  }
+  function initButton() {
+    document.getElementById('button').addEventListener('click', toggle);
+  }
+  function toggle(){
+    websocket.send('toggle');
+  }
+</script>
+</body>
+</html>
+)rawliteral";
+
+void notifyClients() {
+  ws.textAll(String(ledState));
+}
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo*)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    data[len] = 0;
+    if (strcmp((char*)data, "toggle") == 0) {
+      ledState = !ledState;
+      notifyClients();
+    }
+  }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
+             void *arg, uint8_t *data, size_t len) {
+  switch (type) {
+    case WS_EVT_CONNECT:
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      break;
+    case WS_EVT_DISCONNECT:
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      break;
+    case WS_EVT_DATA:
+      handleWebSocketMessage(arg, data, len);
+      break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+      break;
+  }
+}
+
+void initWebSocket() {
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
+}
+
+String processor(const String& var){
+  Serial.println(var);
+  if(var == "STATE"){
+    if (ledState){
+      return "ON";
+    }
+    else{
+      return "OFF";
+    }
+  }
+  return String();
+}
+
+void setup(){
+  // Serial port for debugging purposes
+  Serial.begin(115200);
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
   
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+
+  // Print ESP Local IP Address
+  Serial.println(WiFi.localIP());
+
+  initWebSocket();
+
+  // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Start server
+  server.begin();
+}
+
+void loop() {
+  ws.cleanupClients();
+  digitalWrite(ledPin, ledState);
+}
+View raw code
+
+Insert your network credentials in the following variables and the code will work straight away.
+
+const char* ssid = "REPLACE_WITH_YOUR_SSID";
+const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+How the Code Works
+Continue reading to learn how the code works or skip to the Demonstration section.
+
+Importing Libraries
+Import the necessary libraries to build the web server.
+
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+Network Credentials
+Insert your network credentials in the following variables:
+
+const char* ssid = "REPLACE_WITH_YOUR_SSID";
+const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+GPIO Output
+Create a variable called ledState to hold the GPIO state and a variable called ledPin that refers to the GPIO you want to control. In this case, we’ll control the on-board LED (that is connected to GPIO 2).
+
+bool ledState = 0;
+const int ledPin = 2;
+AsyncWebServer and AsyncWebSocket
+Create an AsyncWebServer object on port 80.
+
+AsyncWebServer server(80);
+The ESPAsyncWebServer library includes a WebSocket plugin that makes it easy to handle WebSocket connections. Create an AsyncWebSocket object called ws to handle the connections on the /ws path.
+
+AsyncWebSocket ws("/ws");
+Building the Web Page
+The index_html variable contains the HTML, CSS and JavaScript needed to build and style the web page and handle client-server interactions using WebSocket protocol.
+
+Note: we’re placing everything needed to build the web page on the index_html variable that we use on the Arduino sketch. Note that it may be more practical to have separated HTML, CSS and JavaScript files that then you upload to the ESP32 filesystem and reference them on the code.
+
+Recommended reading: ESP32 Web Server using SPIFFS (SPI Flash File System)
+
+Here’s the content of the index_html variable:
+
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>ESP Web Server</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <style>
+  html {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+  }
+  h1 {
+    font-size: 1.8rem;
+    color: white;
+  }
+  h2{
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #143642;
+  }
+  .topnav {
+    overflow: hidden;
+    background-color: #143642;
+  }
+  body {
+    margin: 0;
+  }
+  .content {
+    padding: 30px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .card {
+    background-color: #F8F7F9;;
+    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    padding-top:10px;
+    padding-bottom:20px;
+  }
+  .button {
+    padding: 15px 50px;
+    font-size: 24px;
+    text-align: center;
+    outline: none;
+    color: #fff;
+    background-color: #0f8b8d;
+    border: none;
+    border-radius: 5px;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+   }
+   .button:active {
+     background-color: #0f8b8d;
+     box-shadow: 2 2px #CDCDCD;
+     transform: translateY(2px);
+   }
+   .state {
+     font-size: 1.5rem;
+     color:#8c8c8c;
+     font-weight: bold;
+   }
+  </style>
+<title>ESP Web Server</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+</head>
+<body>
+  <div class="topnav">
+    <h1>ESP WebSocket Server</h1>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Output - GPIO 2</h2>
+      <p class="state">state: <span id="state">%STATE%</span></p>
+      <p><button id="button" class="button">Toggle</button></p>
+    </div>
+  </div>
+<script>
+  var gateway = `ws://${window.location.hostname}/ws`;
+  var websocket;
+  function initWebSocket() {
+    console.log('Trying to open a WebSocket connection...');
+    websocket = new WebSocket(gateway);
+    websocket.onopen    = onOpen;
+    websocket.onclose   = onClose;
+    websocket.onmessage = onMessage; // <-- add this line
+  }
+  function onOpen(event) {
+    console.log('Connection opened');
+  }
+
+  function onClose(event) {
+    console.log('Connection closed');
+    setTimeout(initWebSocket, 2000);
+  }
+  function onMessage(event) {
+    var state;
+    if (event.data == "1"){
+      state = "ON";
+    }
+    else{
+      state = "OFF";
+    }
+    document.getElementById('state').innerHTML = state;
+  }
+  window.addEventListener('load', onLoad);
+  function onLoad(event) {
+    initWebSocket();
+    initButton();
+  }
+
+  function initButton() {
+    document.getElementById('button').addEventListener('click', toggle);
+  }
+  function toggle(){
+    websocket.send('toggle');
+  }
+</script>
+</body>
+</html>
