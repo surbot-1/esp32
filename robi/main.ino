@@ -17,7 +17,9 @@ const int ledPin = 2;
 #define E3 14 
 #define E4 27 
 
-void setting() {}
+void setting() { 
+    digitalWrite(ledPin, HIGH); 
+}
 void forward() { 
     digitalWrite(E1, LOW);
     digitalWrite(E2, HIGH); 
@@ -184,11 +186,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     AwsFrameInfo *info = (AwsFrameInfo*)arg; 
     if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) { 
         data[len] = 0; 
-        if (strcmp((char*)data, "setting") == 0) { 
+        Serial.println((char*)data); 
+        /* if (strcmp((char*)data, "setting") == 0) { 
             ledState = !ledState; 
             notifyClients(); 
-        } 
-        Serial.println((char*)data); 
+        } */ 
         command = (char*)data; 
         if (command == "setting") { 
             setting(); notifyClients(); 
