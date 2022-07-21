@@ -1,3 +1,4 @@
+/* ROBI */
 #include <WiFi.h> 
 #include <WiFiClient.h> 
 #include <WiFiAP.h> 
@@ -16,45 +17,53 @@ const int ledPin = 2;
 #define E3 14 
 #define E4 27 
 
+void setting() {}
 void forward() { 
     digitalWrite(E1, LOW);
     digitalWrite(E2, HIGH); 
     digitalWrite(E3, LOW); 
     digitalWrite(E4, HIGH); 
+    digitalWrite(ledPin, HIGH); 
     } 
 void backward() {
     digitalWrite(E1, HIGH);
     digitalWrite(E2, LOW); 
     digitalWrite(E3, HIGH); 
     digitalWrite(E4, LOW); 
+    digitalWrite(ledPin, HIGH); 
     } 
 void left() {
     digitalWrite(E1, HIGH);
     digitalWrite(E2, LOW); 
     digitalWrite(E3, LOW); 
     digitalWrite(E4, HIGH); 
+    digitalWrite(ledPin, HIGH); 
     delay(200); 
     digitalWrite(E1, HIGH);
     digitalWrite(E2, HIGH); 
     digitalWrite(E3, HIGH); 
     digitalWrite(E4, HIGH); 
+    digitalWrite(ledPin, LOW); 
     } 
 void right() {
     digitalWrite(E1, LOW);
     digitalWrite(E2, HIGH); 
     digitalWrite(E3, HIGH); 
     digitalWrite(E4, LOW); 
+    digitalWrite(ledPin, HIGH); 
     delay(200); 
     digitalWrite(E1, HIGH);
     digitalWrite(E2, HIGH); 
     digitalWrite(E3, HIGH); 
     digitalWrite(E4, HIGH); 
+    digitalWrite(ledPin, LOW); 
     } 
 void stop() {
     digitalWrite(E1, HIGH);
     digitalWrite(E2, HIGH); 
     digitalWrite(E3, HIGH); 
     digitalWrite(E4, HIGH); 
+    digitalWrite(ledPin, LOW); 
     } 
 void setGPIOPins() {
   pinMode(E1, OUTPUT); 
@@ -266,7 +275,7 @@ void setup(){
 } 
 void loop() { 
     ws.cleanupClients(); 
-    digitalWrite(ledPin, ledState); 
+    // digitalWrite(ledPin, ledState); 
 }
    
        
