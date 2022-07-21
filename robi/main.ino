@@ -87,19 +87,20 @@ const char index_html[] PROGMEM = R"rawliteral(
     ROBI
   </div>
   <div id='div2' style='text-align:center;'> 
+    <p><button type='button' id='setting'>Setting</button></p> 
     <p>Command: <span id='command'>%COMMAND%</span></p>
   </div>
   <div id='div3' style='display:flex; justify-content:center; align-items:center; margin-top:20px;'> 
   <div id='div4'>
-    <button type='button' id='forward' onclick='forward()' style='margin-left:80px; margin-top:0px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
+    <button type='button' id='forward' style='margin-left:80px; margin-top:0px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
     <img src=''></button><br>
-    <button type='button' id='left' onclick='left()' style='margin-left:0px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
+    <button type='button' id='left' style='margin-left:0px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
     <img src=''></button> 
-    <button type='button' id='stop' onclick='stop()' style='margin-left:40px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
+    <button type='button' id='stop' style='margin-left:40px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
     <img src=''></button> 
-    <button type='button' id='right' onclick='right()' style='margin-left:40px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
+    <button type='button' id='right' style='margin-left:40px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
     <img src=''></button><br>
-    <button type='button' id='backward' onclick='backward()' style='margin-left:80px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
+    <button type='button' id='backward' style='margin-left:80px; margin-top:40px; width:40px; height:40px; background-color:#A0A0E0; color:#FFFFFF;'>
     <img src=''></button> 
     </div>
    </div> 
@@ -144,7 +145,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       document.getElementById('right').addEventListener('click', right); 
       document.getElementById('stop').addEventListener('click', stop); 
    }
-   function toggle(){
+   function setting(){
       websocket.send('setting');
    } 
    function forward(){
